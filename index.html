@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Etiquetas y QR</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Generador de Etiquetas y Códigos QR desde Excel</h1>
+
+    <!-- Sección de Carga de Archivo -->
+    <div class="upload-section">
+        <label for="excelFile">Selecciona un archivo Excel:</label>
+        <input type="file" id="excelFile" accept=".xls, .xlsx">
+    </div>
+
+    <!-- === NUEVA SECCIÓN: Diseño de Formato de Etiqueta === -->
+    <div id="format-design" class="hidden">
+        <h2>Diseña el Formato de tu Etiqueta</h2>
+        <div class="design-options">
+            <div class="option-group">
+                <label for="labelWidthCm">Ancho (cm):</label>
+                <input type="number" id="labelWidthCm" value="5" min="1" step="0.1">
+            </div>
+            <div class="option-group">
+                <label for="labelHeightCm">Alto (cm):</label>
+                <input type="number" id="labelHeightCm" value="3" min="1" step="0.1">
+            </div>
+            <div class="option-group">
+                <label for="includeQR">Incluir Código QR:</label>
+                <input type="checkbox" id="includeQR" checked>
+            </div>
+            <div class="option-group">
+                <label for="qrPosition">Posición del QR:</label>
+                <select id="qrPosition">
+    <option value="top-left">Arriba Izquierda</option>
+    <option value="top-center">Arriba Central</option> <!-- Nueva opción -->
+    <option value="top-right">Arriba Derecha</option>
+    <option value="bottom-left">Abajo Izquierda</option>
+    <option value="bottom-center">Abajo Central</option> <!-- Nueva opción -->
+    <option value="bottom-right">Abajo Derecha</option>
+    <option value="center">Centro</option>
+</select>
+
+            </div>
+            <div class="option-group">
+                <label for="qrSizeCm">Tamaño del QR (cm):</label>
+                <input type="number" id="qrSizeCm" value="2" min="0.5" step="0.1">
+            </div>
+             <div class="option-group">
+                <label for="qrColor">Color del QR:</label>
+                <input type="color" id="qrColor" value="#000000">
+            </div>
+             <div class="option-group">
+                <label for="qrBackgroundColor">Fondo QR:</label>
+                <input type="color" id="qrBackgroundColor" value="#ffffff">
+            </div>
+        </div>
+        <button id="applyFormatBtn">Aplicar Formato y Generar Etiquetas</button>
+    </div>
+    <!-- === FIN DE LA NUEVA SECCIÓN === -->
+
+    <!-- Sección de Selección de Datos (para columnas de Excel) -->
+    <div id="data-selection" class="hidden">
+        <h2>Selecciona los datos de tu Excel</h2>
+        <div id="column-selectors">
+            <!-- Selectores para QR y texto de etiqueta se generarán aquí -->
+        </div>
+    </div>
+
+    <!-- Sección de Vista Previa y Descarga -->
+    <div id="label-preview" class="hidden">
+        <h2>Vista Previa de Etiquetas</h2>
+        <div id="labels-container">
+            <!-- Aquí se mostrarán las etiquetas generadas -->
+        </div>
+        <div class="download-options">
+            <h3>Descargar:</h3>
+            <button id="downloadAllJpgBtn">Descargar Todas (JPG)</button>
+            <button id="downloadAllPdfBtn">Descargar Todas (PDF)</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Librería QR cargada localmente -->
+    <script src="js/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
