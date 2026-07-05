@@ -15,7 +15,7 @@
         <input type="file" id="excelFile" accept=".xls, .xlsx">
     </div>
 
-    <!-- === NUEVA SECCIÓN: Diseño de Formato de Etiqueta === -->
+    <!-- Sección de Diseño de Formato de Etiqueta -->
     <div id="format-design" class="hidden">
         <h2>Diseña el Formato de tu Etiqueta</h2>
         <div class="design-options">
@@ -34,15 +34,14 @@
             <div class="option-group">
                 <label for="qrPosition">Posición del QR:</label>
                 <select id="qrPosition">
-    <option value="top-left">Arriba Izquierda</option>
-    <option value="top-center">Arriba Central</option> <!-- Nueva opción -->
-    <option value="top-right">Arriba Derecha</option>
-    <option value="bottom-left">Abajo Izquierda</option>
-    <option value="bottom-center">Abajo Central</option> <!-- Nueva opción -->
-    <option value="bottom-right">Abajo Derecha</option>
-    <option value="center">Centro</option>
-</select>
-
+                    <option value="top-left">Arriba Izquierda</option>
+                    <option value="top-center">Arriba Central</option>
+                    <option value="top-right">Arriba Derecha</option>
+                    <option value="bottom-left">Abajo Izquierda</option>
+                    <option value="bottom-center">Abajo Central</option>
+                    <option value="bottom-right">Abajo Derecha</option>
+                    <option value="center">Centro</option>
+                </select>
             </div>
             <div class="option-group">
                 <label for="qrSizeCm">Tamaño del QR (cm):</label>
@@ -56,10 +55,13 @@
                 <label for="qrBackgroundColor">Fondo QR:</label>
                 <input type="color" id="qrBackgroundColor" value="#ffffff">
             </div>
+            <div class="option-group">
+                <label for="showColumnHeaders">Mostrar Títulos de Columna:</label>
+                <input type="checkbox" id="showColumnHeaders">
+            </div>
         </div>
         <button id="applyFormatBtn">Aplicar Formato y Generar Etiquetas</button>
     </div>
-    <!-- === FIN DE LA NUEVA SECCIÓN === -->
 
     <!-- Sección de Selección de Datos (para columnas de Excel) -->
     <div id="data-selection" class="hidden">
@@ -91,4 +93,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
