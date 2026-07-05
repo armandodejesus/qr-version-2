@@ -18,8 +18,9 @@ const columnSelectorsDiv = document.getElementById('column-selectors');
 const applyFormatBtn = document.getElementById('applyFormatBtn');
 const labelPreviewDiv = document.getElementById('label-preview');
 const labelsContainer = document.getElementById('labels-container');
-const downloadAllJpgBtn = document.getElementById('downloadAllJpgBtn');
+const downloadAllJpgZipBtn = document.getElementById('downloadAllJpgZipBtn');
 const downloadAllPdfBtn = document.getElementById('downloadAllPdfBtn');
+const fileNameColumnSelect = document.getElementById('fileNameColumn');
 
 // --- Elementos de Diseño ---
 const labelWidthCmInput = document.getElementById('labelWidthCm');
@@ -34,7 +35,7 @@ const showColumnHeadersCheckbox = document.getElementById('showColumnHeaders');
 // --- Event Listeners ---
 fileInput.addEventListener('change', handleFileSelect);
 applyFormatBtn.addEventListener('click', applyAndGenerateLabels);
-downloadAllJpgBtn.addEventListener('click', downloadAllAsJpg);
+downloadAllJpgZipBtn.addEventListener('click', downloadAllAsJpgZip);
 downloadAllPdfBtn.addEventListener('click', downloadAllAsPdf);
 
 // --- Verificación Inicial de la Librería QR ---
@@ -48,6 +49,11 @@ function cmToPx(cm) {
 
 function pxToCm(px) {
     return (px / PIXELS_PER_MM) / MM_PER_CM;
+}
+
+// Sanitizar nombres de archivo
+function sanitizeFileName(fileName) {
+    return fileName.replace(/[<>:"/\\|?*]/g, '_').substring(0, 255);
 }
 
 // --- Funciones Principales ---
@@ -111,6 +117,19 @@ function displayColumnSelectors() {
         <button type="button" onclick="addLabelField()">Añadir otro campo a la etiqueta</button>
     `;
     columnSelectorsDiv.appendChild(labelContentDiv);
+
+    // Actualizar selector de nombres de archivo
+    updateFileNameSelector(headers);
+}
+
+function updateFileNameSelector(headers) {
+    fileNameColumnSelect.innerHTML = '<option value="">-- Selecciona una columna --</option>';
+    headers.forEach(header => {
+        const option = document.createElement('option');
+        option.value = header;
+        option.textContent = header;
+        fileNameColumnSelect.appendChild(option);
+    });
 }
 
 function addLabelField() {
@@ -378,24 +397,57 @@ function generateLabels(format) {
 
 // --- Funciones de Descarga ---
 
-function downloadAllAsJpg() {
+function downloadAllAsJpgZip() {
     if (generatedLabels.length === 0) {
         alert('No hay etiquetas generadas para descargar.');
         return;
     }
-    alert('Iniciando descarga de JPGs...');
+    
+    const fileNameColumn = fileNameColumnSelect.value;
+    
+    if (!fileNameColumn) {
+        alert('Por favor selecciona una columna para los nombres de archivo.');
+        return;
+    }
+    
+    const zip = new JSZip();
+    let completedCount = 0;
+    
+    alert('Generando ZIP con todas las imágenes...');
+    
     generatedLabels.forEach((labelElement, index) => {
         html2canvas(labelElement, { scale: HTML2CANVAS_SCALE }).then(canvas => {
             const imgData = canvas.toDataURL('image/jpeg');
-            const link = document.createElement('a');
-            link.href = imgData;
-            link.download = `etiqueta_${index + 1}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            
+            // Obtener nombre del archivo desde la columna seleccionada
+            const nameFromColumn = excelData[index]?.[fileNameColumn] || `etiqueta_${index + 1}`;
+            const sanitizedName = sanitizeFileName(nameFromColumn.toString());
+            
+            // Agregar al ZIP (eliminar el data:image/jpeg;base64, del inicio)
+            zip.file(`${sanitizedName}.jpg`, imgData.split(',')[1], { base64: true });
+            completedCount++;
+            
+            // Cuando todas estén procesadas, descargar ZIP
+            if (completedCount === generatedLabels.length) {
+                zip.generateAsync({ type: 'blob' }).then(blob => {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'etiquetas_descargadas.zip';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    alert('ZIP descargado correctamente.');
+                }).catch(err => {
+                    console.error('Error al generar ZIP:', err);
+                    alert('Error al generar ZIP. Revisa la consola.');
+                });
+            }
         }).catch(err => {
             console.error(`Error al generar JPG para etiqueta ${index + 1}:`, err);
-            alert(`Error al generar JPG para etiqueta ${index + 1}. Revisa la consola.`);
+            completedCount++;
+            if (completedCount === generatedLabels.length) {
+                alert('Algunas imágenes no se pudieron procesar, pero el ZIP se generó con las que sí.');
+            }
         });
     });
 }
