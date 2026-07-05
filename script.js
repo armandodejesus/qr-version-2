@@ -29,6 +29,7 @@ const qrPositionSelect = document.getElementById('qrPosition');
 const qrSizeCmInput = document.getElementById('qrSizeCm');
 const qrColorInput = document.getElementById('qrColor');
 const qrBackgroundColorInput = document.getElementById('qrBackgroundColor');
+const showColumnHeadersCheckbox = document.getElementById('showColumnHeaders');
 
 // --- Event Listeners ---
 fileInput.addEventListener('change', handleFileSelect);
@@ -37,17 +38,15 @@ downloadAllJpgBtn.addEventListener('click', downloadAllAsJpg);
 downloadAllPdfBtn.addEventListener('click', downloadAllAsPdf);
 
 // --- Verificación Inicial de la Librería QR ---
-console.log("Verificando QRCode globalmente:", typeof QRCode); // Debería ser 'function' o 'object' si se cargó localmente
+console.log("Verificando QRCode globalmente:", typeof QRCode);
 
 
 // --- Funciones de Utilidad ---
 function cmToPx(cm) {
-    // Convierte centímetros a píxeles usando las constantes definidas
     return cm * MM_PER_CM * PIXELS_PER_MM;
 }
 
 function pxToCm(px) {
-    // Convierte píxeles a centímetros
     return (px / PIXELS_PER_MM) / MM_PER_CM;
 }
 
@@ -61,17 +60,17 @@ function handleFileSelect(event) {
     reader.onload = function(e) {
         const data = e.target.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        const firstSheetName = workbook.SheetNames[0]; // Asume datos en la primera hoja
+        const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         excelData = XLSX.utils.sheet_to_json(worksheet);
 
         console.log("Datos del Excel cargados:", excelData);
 
         if (excelData.length > 0) {
-            displayColumnSelectors(); // Muestra los selectores de columnas
-            formatDesignDiv.classList.remove('hidden'); // Muestra la sección de diseño
-            dataSelectionDiv.classList.remove('hidden'); // Muestra la sección de selección de datos
-            labelPreviewDiv.classList.add('hidden');     // Oculta la vista previa anterior
+            displayColumnSelectors();
+            formatDesignDiv.classList.remove('hidden');
+            dataSelectionDiv.classList.remove('hidden');
+            labelPreviewDiv.classList.add('hidden');
         } else {
             alert('El archivo Excel está vacío o no contiene datos.');
         }
@@ -80,10 +79,10 @@ function handleFileSelect(event) {
 }
 
 function displayColumnSelectors() {
-    columnSelectorsDiv.innerHTML = ''; // Limpiar selectores anteriores
+    columnSelectorsDiv.innerHTML = '';
     if (excelData.length === 0) return;
 
-    const headers = Object.keys(excelData[0]); // Obtiene los nombres de las columnas
+    const headers = Object.keys(excelData[0]);
 
     // Selector para el dato del código QR
     const qrDataColumnDiv = document.createElement('div');
@@ -118,7 +117,6 @@ function addLabelField() {
     const labelFieldsDiv = document.getElementById('label-fields');
     const newFieldDiv = document.createElement('div');
     newFieldDiv.classList.add('label-field');
-    /*  const headers = Object.keys(excelData[0]);   */
 	const headers = excelData && excelData.length > 0 ? Object.keys(excelData[0]) : [];
     newFieldDiv.innerHTML = 
 		`
@@ -158,16 +156,18 @@ function applyAndGenerateLabels() {
         qrSizePx: cmToPx(parseFloat(qrSizeCmInput.value) || 2),
         qrColor: qrColorInput.value,
         qrBackgroundColor: qrBackgroundColorInput.value,
+        showColumnHeaders: showColumnHeadersCheckbox.checked,
     };
 
     console.log("Formato de etiqueta seleccionado (en PX):", {
         width: currentLabelFormat.widthPx,
         height: currentLabelFormat.heightPx,
-        qrSize: currentLabelFormat.qrSizePx
+        qrSize: currentLabelFormat.qrSizePx,
+        showHeaders: currentLabelFormat.showColumnHeaders
     });
 
     // 3. Validaciones: Asegurar que el QR no se solape
-    const qrPadding = 5; // Margen para el QR dentro de la etiqueta (en píxeles)
+    const qrPadding = 5;
     if (currentLabelFormat.includeQR) {
         if (currentLabelFormat.qrSizePx > currentLabelFormat.widthPx - (2 * qrPadding)) {
             alert(`El tamaño del código QR (${pxToCm(currentLabelFormat.qrSizePx).toFixed(1)} cm) es demasiado grande para el ancho de la etiqueta (${pxToCm(currentLabelFormat.widthPx).toFixed(1)} cm).`);
@@ -190,12 +190,19 @@ function generateLabels(format) {
         return;
     }
 
-    labelsContainer.innerHTML = ''; // Limpiar vista previa
-    generatedLabels = []; // Limpiar etiquetas previas
+    labelsContainer.innerHTML = '';
+    generatedLabels = [];
 
     excelData.forEach((row, index) => {
         const qrData = row[selectedColumns.qrDataColumn] || '';
-        const labelContentParts = selectedColumns.labelDataColumns.map(col => row[col] || '');
+        
+        // Construir contenido con o sin títulos de columna
+        let labelContentParts = [];
+        if (format.showColumnHeaders) {
+            labelContentParts = selectedColumns.labelDataColumns.map(col => `${col}: ${row[col] || ''}`);
+        } else {
+            labelContentParts = selectedColumns.labelDataColumns.map(col => row[col] || '');
+        }
         const fullLabelContent = labelContentParts.join('\n');
 
         // --- Crear elemento canvas para QR (si se incluye) ---
@@ -214,14 +221,13 @@ function generateLabels(format) {
         if (format.includeQR && typeof QRCode === 'undefined') {
             console.error("¡ERROR FATAL! QRCode no está definido. Librería no cargada.");
             alert("Error: La librería de generación de QR no está disponible. Revisa la consola del navegador.");
-            return; // Detener si QR es requerido y la librería no existe
+            return;
         }
 
         // --- Función para dibujar el QR y luego crear la etiqueta ---
         const drawQRAndCreateLabel = (callback) => {
             if (!format.includeQR || !qrCanvas) {
-                // Si no se incluye QR, creamos la etiqueta directamente
-                createLabel(null, null, callback); // Pasa null para QR y error simulado
+                createLabel(null, null, callback);
                 return;
             }
 
@@ -230,14 +236,14 @@ function generateLabels(format) {
                 height: format.qrSizePx,
                 colorDark: format.qrColor,
                 colorLight: format.qrBackgroundColor,
-                errorCorrectionLevel: 'H' // Nivel de corrección alto
+                errorCorrectionLevel: 'H'
             }, function (error) {
                 if (error) {
                     console.error(`Error al generar QR para fila ${index + 1}:`, error);
                 } else {
                     console.log(`QR generado para fila ${index + 1}.`);
                 }
-                createLabel(qrCanvas, error, callback); // Pasa el canvas y el error
+                createLabel(qrCanvas, error, callback);
             });
         };
 
@@ -248,107 +254,115 @@ function generateLabels(format) {
             labelElement.id = `label-${index}`;
             labelElement.style.width = `${format.widthPx}px`;
             labelElement.style.height = `${format.heightPx}px`;
-            labelElement.style.border = '1px solid #ccc'; // Borde básico
-            labelElement.style.padding = '10px'; // Padding interno para el contenido
+            labelElement.style.border = '1px solid #ccc';
+            labelElement.style.padding = '10px';
             labelElement.style.margin = '10px';
             labelElement.style.display = 'flex';
             labelElement.style.position = 'relative';
             labelElement.style.boxSizing = 'border-box';
-            labelElement.style.overflow = 'hidden'; // Crucial para que el QR no se salga
-			
-		
+            labelElement.style.overflow = 'hidden';
 
-		
             // Estilos de texto base
             const textElementStyles = {
-                textAlign: 'center', // Alineación horizontal del texto
+                textAlign: 'center',
                 width: '100%',
-                whiteSpace: 'pre-wrap', // Mantiene saltos de línea (\n)
-                flexGrow: '1', // Permite que el texto ocupe espacio disponible
-                padding: '5px', // Pequeño padding para el texto
-                overflowY: 'auto' // Si el texto es muy largo, que se pueda hacer scroll dentro de la etiqueta
+                whiteSpace: 'pre-wrap',
+                flexGrow: '1',
+                padding: '5px',
+                overflowY: 'auto',
+                fontSize: '0.85em'
             };
 
-            // Posicionamiento y alineación del QR, y ajuste de la alineación del texto
-            let textFlexDirection = 'column'; // Texto y QR en columna por defecto
-            let textAlignment = 'center';     // Alineación horizontal para todos los elementos internos
-            let textJustification = 'center'; // Justificación vertical del contenido principal
+            // Posicionamiento y alineación del QR
+            let textFlexDirection = 'column';
+            let textAlignment = 'center';
+            let textJustification = 'center';
 
             if (format.includeQR && qrCanvasElement) {
                 const qrContainer = document.createElement('div');
                 qrContainer.style.position = 'absolute';
                 qrContainer.style.width = `${format.qrSizePx}px`;
                 qrContainer.style.height = `${format.qrSizePx}px`;
-                // Añadir margen al QR para que no toque bordes de la etiqueta
-                const qrMargin = 5; // Margen en píxeles
+                const qrMargin = 5;
                 qrContainer.style.margin = `${qrMargin}px`;
 
                 switch (format.qrPosition) {
                     case 'top-left':
-                        qrContainer.style.top = `${qrMargin}px`; qrContainer.style.left = `${qrMargin}px`;
-                        textFlexDirection = 'column'; textAlignment = 'left'; textJustification = 'flex-start'; // Texto arriba a la izquierda
+                        qrContainer.style.top = `${qrMargin}px`;
+                        qrContainer.style.left = `${qrMargin}px`;
+                        textFlexDirection = 'column';
+                        textAlignment = 'left';
+                        textJustification = 'flex-start';
                         break;
                     case 'top-right':
-                        qrContainer.style.top = `${qrMargin}px`; qrContainer.style.right = `${qrMargin}px`;
-                        textFlexDirection = 'column'; textAlignment = 'right'; textJustification = 'flex-start'; // Texto arriba a la derecha
+                        qrContainer.style.top = `${qrMargin}px`;
+                        qrContainer.style.right = `${qrMargin}px`;
+                        textFlexDirection = 'column';
+                        textAlignment = 'right';
+                        textJustification = 'flex-start';
                         break;
                     case 'bottom-left':
-                        qrContainer.style.bottom = `${qrMargin}px`; qrContainer.style.left = `${qrMargin}px`;
-                        textFlexDirection = 'column'; textAlignment = 'left'; textJustification = 'flex-end'; // Texto abajo a la izquierda
+                        qrContainer.style.bottom = `${qrMargin}px`;
+                        qrContainer.style.left = `${qrMargin}px`;
+                        textFlexDirection = 'column';
+                        textAlignment = 'left';
+                        textJustification = 'flex-end';
                         break;
                     case 'center':
-                        qrContainer.style.top = '50%'; qrContainer.style.left = '50%';
+                        qrContainer.style.top = '50%';
+                        qrContainer.style.left = '50%';
                         qrContainer.style.transform = 'translate(-50%, -50%)';
-                        textFlexDirection = 'column'; textAlignment = 'center'; textJustification = 'center'; // Todo centrado
+                        textFlexDirection = 'column';
+                        textAlignment = 'center';
+                        textJustification = 'center';
                         break;
-					// Dentro de createLabel, en el switch de format.qrPosition
-					case 'top-center':
-    					qrContainer.style.top = `${qrMargin}px`; // Usa el margen definido
-    					qrContainer.style.left = '50%';
-    					qrContainer.style.transform = 'translateX(-50%)'; // Centra horizontalmente
-    					textFlexDirection = 'column'; // Organiza el contenido en columna
-    					textAlignment = 'center';     // Centra el texto horizontalmente
-    					textJustification = 'flex-start'; // Justifica el texto en la parte superior
-    					break;
-					case 'bottom-center':
-						qrContainer.style.bottom = `${qrMargin}px`; // Usa el margen definido
-    					qrContainer.style.left = '50%';
-    					qrContainer.style.transform = 'translateX(-50%)'; // Centra horizontalmente
-    					textFlexDirection = 'column'; // Organiza el contenido en columna
-    					textAlignment = 'center';     // Centra el texto horizontalmente
-    					textJustification = 'flex-end'; // Justifica el texto en la parte inferior
-						break;
-// ... se mantendrían los otros casos existentes [T8](3) [T9](4)
-
-                    case 'bottom-right': // Por defecto
+                    case 'top-center':
+                        qrContainer.style.top = `${qrMargin}px`;
+                        qrContainer.style.left = '50%';
+                        qrContainer.style.transform = 'translateX(-50%)';
+                        textFlexDirection = 'column';
+                        textAlignment = 'center';
+                        textJustification = 'flex-start';
+                        break;
+                    case 'bottom-center':
+                        qrContainer.style.bottom = `${qrMargin}px`;
+                        qrContainer.style.left = '50%';
+                        qrContainer.style.transform = 'translateX(-50%)';
+                        textFlexDirection = 'column';
+                        textAlignment = 'center';
+                        textJustification = 'flex-end';
+                        break;
+                    case 'bottom-right':
                     default:
-                        qrContainer.style.bottom = `${qrMargin}px`; qrContainer.style.right = `${qrMargin}px`;
-                        textFlexDirection = 'column'; textAlignment = 'right'; textJustification = 'flex-end'; // Texto abajo a la derecha
+                        qrContainer.style.bottom = `${qrMargin}px`;
+                        qrContainer.style.right = `${qrMargin}px`;
+                        textFlexDirection = 'column';
+                        textAlignment = 'right';
+                        textJustification = 'flex-end';
                         break;
                 }
                 qrContainer.appendChild(qrCanvasElement);
                 labelElement.appendChild(qrContainer);
             } else if (!format.includeQR) {
-                // Si no hay QR, el texto debe centrarse verticalmente en la etiqueta
                 textJustification = 'center';
             }
 
             // Configurar estilos del contenedor principal de la etiqueta
             labelElement.style.flexDirection = textFlexDirection;
-            labelElement.style.justifyContent = textJustification; // Alineación vertical del contenido
-            labelElement.style.alignItems = textAlignment;       // Alineación horizontal de los elementos internos
+            labelElement.style.justifyContent = textJustification;
+            labelElement.style.alignItems = textAlignment;
 
             // Crear y configurar el div del texto
             const textDiv = document.createElement('div');
             Object.assign(textDiv.style, textElementStyles);
             textDiv.innerText = fullLabelContent;
-            labelElement.prepend(textDiv); // Añadir texto (antes del QR si está abajo)
+            labelElement.prepend(textDiv);
 
             labelsContainer.appendChild(labelElement);
             generatedLabels.push(labelElement);
             console.log(`Etiqueta ${index + 1} creada. QR: ${format.includeQR && qrCanvasElement ? 'Sí' : 'No'}.`);
 
-            if (finalCallback) finalCallback(); // Llama al callback final si existe
+            if (finalCallback) finalCallback();
         };
 
         // Ejecutar la lógica: dibujar QR (si aplica) y luego crear la etiqueta
@@ -362,7 +376,7 @@ function generateLabels(format) {
 }
 
 
-// --- Funciones de Descarga (ajustadas para usar el formato aplicado) ---
+// --- Funciones de Descarga ---
 
 function downloadAllAsJpg() {
     if (generatedLabels.length === 0) {
@@ -371,7 +385,6 @@ function downloadAllAsJpg() {
     }
     alert('Iniciando descarga de JPGs...');
     generatedLabels.forEach((labelElement, index) => {
-        // Usamos la escala global definida
         html2canvas(labelElement, { scale: HTML2CANVAS_SCALE }).then(canvas => {
             const imgData = canvas.toDataURL('image/jpeg');
             const link = document.createElement('a');
@@ -395,21 +408,17 @@ function downloadAllAsPdf() {
     alert('Generando PDF...');
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
-        orientation: 'portrait', // Orientación 'portrait' o 'landscape'
-        unit: 'mm',             // Unidad de medida en milímetros
-        format: 'a4'            // Tamaño de página (a4, letter, etc.)
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
     });
 
-    // Usamos el formato actual aplicado para calcular el tamaño en mm
-    const format = currentLabelFormat; // Formato en Píxeles
+    const format = currentLabelFormat;
 
-    // Convertir las dimensiones de píxeles (usadas en html2canvas) a mm para jsPDF
-    // El tamaño en Píxeles del canvas renderizado es `format.widthPx / HTML2CANVAS_SCALE`.
-    // Este valor se convierte a mm: `(format.widthPx / HTML2CANVAS_SCALE) / PIXELS_PER_MM`
     const labelWidthMm = (format.widthPx / HTML2CANVAS_SCALE) / PIXELS_PER_MM;
     const labelHeightMm = (format.heightPx / HTML2CANVAS_SCALE) / PIXELS_PER_MM;
 
-    const paddingMM = 5; // Margen entre etiquetas y bordes de la página
+    const paddingMM = 5;
     let xPos = paddingMM;
     let yPos = paddingMM;
     const pageWidthMm = pdf.internal.pageSize.getWidth();
@@ -417,40 +426,34 @@ function downloadAllAsPdf() {
 
     const addLabelToPdf = async (labelElement, index) => {
         return new Promise((resolve) => {
-            // Usamos la misma escala que en JPG para consistencia
             html2canvas(labelElement, { scale: HTML2CANVAS_SCALE }).then(canvas => {
-                const imgData = canvas.toDataURL('image/png'); // PNG es bueno para conversiones a PDF
+                const imgData = canvas.toDataURL('image/png');
 
-                // Comprobar si la etiqueta cabe en la página actual
                 if (yPos + labelHeightMm > pageHeightMm - paddingMM) {
-                    pdf.addPage(); // Añadir nueva página si no cabe verticalmente
+                    pdf.addPage();
                     yPos = paddingMM;
                     xPos = paddingMM;
                 }
-                // Comprobar si la etiqueta cabe en la línea actual (columna)
                 if (xPos + labelWidthMm > pageWidthMm - paddingMM) {
-                    yPos += labelHeightMm + paddingMM; // Pasar a la siguiente línea
-                    xPos = paddingMM; // Volver a la primera columna
-                    // Si al pasar a la siguiente línea tampoco cabe, añadir nueva página
+                    yPos += labelHeightMm + paddingMM;
+                    xPos = paddingMM;
                     if (yPos + labelHeightMm > pageHeightMm - paddingMM) {
                         pdf.addPage();
                         yPos = paddingMM;
                     }
                 }
 
-                // Añadir la imagen de la etiqueta al PDF
                 pdf.addImage(imgData, 'PNG', xPos, yPos, labelWidthMm, labelHeightMm);
-                yPos += labelHeightMm + paddingMM; // Mover la posición Y para la siguiente etiqueta
+                yPos += labelHeightMm + paddingMM;
 
                 resolve();
             }).catch(err => {
                 console.error(`Error al convertir etiqueta ${index + 1} a imagen para PDF:`, err);
-                resolve(); // Resolvemos para no bloquear el proceso si una etiqueta falla
+                resolve();
             });
         });
     };
 
-    // Bucle asíncrono para añadir todas las etiquetas al PDF
     (async () => {
         for (let i = 0; i < generatedLabels.length; i++) {
             await addLabelToPdf(generatedLabels[i], i);
